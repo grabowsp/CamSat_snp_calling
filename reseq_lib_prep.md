@@ -8,7 +8,8 @@ C.sativa files available from JGI
 libraries and filter out names not to be included 
 * Transferred list of libraries to NERSC
 ### Gettin info from JGI
-* Location of files from the overall Camelina sativa project on the JGI Genome Portal
+* Location of files from the overall Camelina sativa project on the JGI \
+Genome Portal
   * `https://genome.jgi.doe.gov/portal/pages/dynamicOrganismDownload.jsf?organism=GenResaOilTraits`
   * note: need to sign in to JGI Genome Portal to access the info
 * Location of xml file in HA system
@@ -90,7 +91,9 @@ do jamo fetch library $i; done
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
-for i in `cat camsat_reseq_libs_for_SNPcalling_1.txt`; do jamo report short_form library $i | grep UNPROCESSED >> ./CONFIG/lib.config; done
+for i in `cat camsat_reseq_libs_for_SNPcalling_1.txt`;
+do jamo report short_form library $i | grep UNPROCESSED >> ./CONFIG/lib.config;
+done
 ```
 
 ## Submit prepping jobs
@@ -142,4 +145,30 @@ sleep 10s;
 done
 ```
 * for rest of sublists, use `cat` in the `for i in ...` portion of the loop
+* `lib_small_list_01`
+```
+bash
+module load python
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+for i in `cat lib_small_list_01`;
+do cd ./$i
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i
+cd ..
+sleep 10s;
+done
+```
+* `lib_small_list_02`
+```
+bash
+module load python
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+for i in `cat lib_small_list_02`;
+do cd ./$i
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i
+cd ..
+sleep 10s;
+done
+```
 
