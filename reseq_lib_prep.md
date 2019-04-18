@@ -158,13 +158,14 @@ cd ..
 sleep 10s;
 done
 ```
-* `lib_small_list_02`
+* `lib_small_list_02`, `lib_small_list_03`, `lib_small_list_04`, \
+`lib_small_list_05`, `lib_small_list_06`
 ```
 bash
 module load python
 source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
 cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
-for i in `cat lib_small_list_02`;
+for i in `cat lib_small_list_06`;
 do cd ./$i
 python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i
 cd ..
