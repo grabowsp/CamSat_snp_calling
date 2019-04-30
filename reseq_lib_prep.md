@@ -160,14 +160,18 @@ done
 ```
 * `lib_small_list_02`, `lib_small_list_03`, `lib_small_list_04`, \
 `lib_small_list_05`, `lib_small_list_06`
+* for `lib_small_list_07` and `lib_small_list_08`; setting '-q 100' so can \
+launch more jobs - fewer jobs run simultaneously per prep, but don't have to \
+do quite as sessions submitting jobs
+  * same for `lib_small_list_09`, `libs_small_list_10`, and `lib_small_list_11`
 ```
 bash
 module load python
 source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
 cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
-for i in `cat lib_small_list_06`;
+for i in `cat lib_small_list_11`;
 do cd ./$i
-python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i -q 100
 cd ..
 sleep 10s;
 done

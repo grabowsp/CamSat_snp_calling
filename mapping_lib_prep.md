@@ -48,7 +48,75 @@ cp /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/linkerSeq/* 
 for i in `cat camsat_mapping_libs_for_SNPcalling_1.txt`; do mkdir ./$i; done
 ```
 
-# NEXT STEP IS TO PREPARE lib.config FILE, BUT I WANT TO WAIT UNTIL CLOSER
-#  TO WHEN I WILL BE ABLE TO PREP THE FILES
+## Generate lib.config file
+### Overview
+* Requires using the jamo module/function to get information about the \
+status and location of the libraries at JGI
+* Used `jamo info LIB_CODE` to get information about the libraries
+  * Any 'PURGED' libraries had to be 'fetched' using \
+`jamo fetch library LIB_CODE`
+  * from what I understand, this brings back the library from tape storage \
+so it can be directly accessed during the prepping
+* Use `jamo report short_form library LIB_CODE` to get info about the \
+libraries that could be put into the `lib.config` file
+  * Need to include a `grep UNPROCESSED` term so that info about all \
+libraries tied to a `LIB_CODE` are included in the prepping
+### Get status of libraries
+```
+bash
+module load python
+module load jamo
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+for i in `cat camsat_mapping_libs_for_SNPcalling_1.txt`;
+do jamo info library $i >> reseq_lib_info.txt; done
+```
+### Check that all libraries are on tape
+* Use `grep PURGED reseq_lib_info.txt` to get `LIB_CODE` of any libraries \
+that were not in the main storage of JGI
+* Use `jamo fetch library LIB_CODE` for those libraries
+* ex:
+```
+for i in `grep PURGED reseq_lib_info.txt`;
+do jamo fetch library $i; done
+```
+* Need to wait until `jamo info library LIB_CODE` shows a state of \
+`BACKUP_COMPLETE` or `RESTORED` before going on to next step
+### Generate lib.config file
+```
+bash
+module load python
+module load jamo
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+for i in `cat camsat_mapping_libs_for_SNPcalling_1.txt`;
+do jamo report short_form library $i | grep UNPROCESSED >> ./CONFIG/lib.config;
+done
+```
+
+## Submit prepping jobs
+### Overview
+* Generated sub-lists of 45 `LIB_CODE`s because launching the prepper submits \
+many jobs for each `LIB_CODE`, and Chris recommended prepping 45 libraries \
+at a time if use '-q 100' flag to stay withing the rules of NERSC
+### Generate sub-lists
+* Generate sub-lists of 45 `LIB_CODE` entries for submitting jobs
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+split -l 45 -d camsat_mapping_libs_for_SNPcalling_1.txt lib_small_list_
+```
+### Submit jobs
+* have submitted: `lib_small_list_00`
+```
+bash
+module load python
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+for i in `cat lib_small_list_00`;
+do cd ./$i
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1 $i -q 100
+cd ..
+sleep 10s;
+done
+```
+
 
 
