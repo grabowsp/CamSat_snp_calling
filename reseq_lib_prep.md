@@ -177,3 +177,138 @@ sleep 10s;
 done
 ```
 
+## Adjustments for `LIB_CODE`s with multiple fastq files
+### Overview
+* Several library codes were sequenced more than once so have more than one \
+fastq file associated with the `LIB_CODE`
+  * `CAWTG`, `CAWTH`, `CAWTN`, `CAWTO`
+* For these cases, each fastq file should be assiciated with a slightly \
+different `LIB_CODE`
+  * ex: `LIB_CODE`; `LIB_CODE_1`, etc
+* Need to change the lib.config file so that the raw fastq files are \
+associated with the different `LIB_CODE` name variants
+* Then rerun the prep
+* For now, will do the re-runs on denovo since there's capacity
+### Adjust names in lib.config
+* `CAWTG`, `CAWTH`, `CAWTN`, `CAWTO`
+* Changed second fastq `LIB_CODE` to `LIB_CODE_1`
+* Also changed "PROCESSED" to "UNPROCESSED"; though not sure that's necessary
+### Clear out previous prep output
+* remove all the files from those 4 directories
+### Make additional directories
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+mkdir CAWTG_1
+mkdir CAWTH_1
+mkdir CAWTN_1
+mkdir CAWTO_1
+```
+### Submit preps on denovo
+```
+bash
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+for i in CAWTG CAWTG_1 CAWTH CAWTH_1 CAWTN CAWTN_1 CAWTO CAWTO_1; 
+do cd ./$i 
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1 $i
+cd ..
+sleep 10s;
+done
+```
+
+## Check that preps finished properly
+### Overview
+* check that there is a `prepComplete` file in each `LIB_CODE` directory
+* For any libraries that did not complete, figure out what the error was
+  * grep for errors in slurm.out files
+### Check that all libraries have `prepComplete` file
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+for i in `cat camsat_reseq_libs_for_SNPcalling_1.txt`; 
+do ls -oh ./$i/prepComplete; done
+```
+* `CAWTH` is the only one that failed
+### Identify problem in CAWTH
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1/CAWTH
+for i in `ls slurm*out`; do grep 'PREP FAILED' $i; done
+```
+* output: `CAWTH_65 PREP FAILED - Read counts do not match`
+* manually correct the pid for `CAWTH_65`
+  * originally had pid 20642225
+  * should be 20642243
+### Submit combine job
+```
+sbatch CAWTHCombine.sh
+```
+### Check that all libraries are prepper properly
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+for i in `ls -d */`; do ls -oh $i/prepComplete; done
+```
+* all `LIB_CODE` directories contain a 'prepComplete' file
+
+
+## Archive Prepped Libraries
+### Overview
+* will use Chris's custom script to archive prepped libraries into jamo
+* Example:
+```
+python /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/generalizedArchiver.py [CONFIG FILE]
+```
+  * use -h for help/to see options
+  * use -e to see example of format for CONFIG FILE
+### Generate archiving CONFIG FILE using R
+* Load prepping lib.config file to get the `LIB_CODE`s
+* Use that info to generate Location, Meta_data, etc
+* Use the lib.config file to get the original file name
+```
+prep_config_file <- '/global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1/CONFIG/lib.config'
+prep_config <- read.table(prep_config_file, header = F, sep = '\t', 
+  stringsAsFactors = F)
+
+prep_data_dir <- '/global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1/'
+destination_dir <- 'SNPS/Camelina_sativa'
+
+archive_list <- list()
+for(pc in seq(nrow(prep_config))){
+  tmp_list <- list()
+  tmp_lib_name <- prep_config[pc, 1]
+  tmp_list[['FILE']] <-paste(tmp_lib_name, '.prepped.fastq.bz2', sep = '')
+  tmp_list[['LOCATION']] <- paste(prep_data_dir, tmp_lib_name, '/', 
+    sep = '')
+  tmp_list[['DESTINATION']] <- destination_dir
+  tmp_list[['META_DATA']] <- paste(prep_data_dir, tmp_lib_name, '/', 
+    tmp_lib_name, '.extractionStats', sep = '')
+  tmp_orig_full <- unlist(strsplit(prep_config[pc, 6], split = '/'))
+  tmp_list[['ORIGFILE']] <- tmp_orig_full[length(tmp_orig_full)]
+  tmp_list[['FILETYPE']] <- 'fastq,fastq.gz'
+  tmp_list[['STATE']] <- 'UNPROCESSED'
+  #
+  archive_list[[tmp_lib_name]] <- tmp_list
+}
+
+archive_df <- data.frame(
+  matrix(unlist(archive_list), byrow = T, ncol = length(archive_list[[1]])),
+  stringsAsFactors = F)
+
+colnames(archive_df) <- names(archive_list[[1]])
+
+archive_config_out <- paste(prep_data_dir, 'reseq_archive_config.txt', 
+  sep = '')
+
+write.table(archive_df, file = archive_config_out, quote = F, sep = '\t', 
+  row.names = F, col.names = T)
+```
+### Run Archiving Script
+```
+bash
+module load python
+module load jamo
+# source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/snp_call_1
+python /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/generalizedArchiver.py reseq_archive_config.txt
+
+```
+
+

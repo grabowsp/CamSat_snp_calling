@@ -104,13 +104,15 @@ cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
 split -l 45 -d camsat_mapping_libs_for_SNPcalling_1.txt lib_small_list_
 ```
 ### Submit jobs
-* have submitted: `lib_small_list_00`
+* have submitted: `lib_small_list_00`, `lib_small_list_01`, \
+`lib_small_list_02`, `lib_small_list_03`, `lib_small_list_04`, \
+`lib_small_list_05`
 ```
 bash
 module load python
 source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
 cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
-for i in `cat lib_small_list_00`;
+for i in `cat lib_small_list_05`;
 do cd ./$i
 python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1 $i -q 100
 cd ..
@@ -118,5 +120,61 @@ sleep 10s;
 done
 ```
 
+
+## Checking that preps have finished
+### Overview
+* check that there is a `prepComplete` file for each library
+* for those that didn't finish, check what happened
+### Check for `prepComplete` file
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+for i in `cat lib_small_list_01`; do ls -oh ./$i/prepComplete; done
+```
+* all finished for `lib_small_list_00`
+* 3 did not finish in `lib_small_list_01`
+  * GBYGB, GBYHA, GBYNN didn't finish..
+
+### Troubleshooting
+#### GBYGB
+* `GBYGB_6` did not run/finish
+* Need to: 
+  * rerun `GBYGB_6.sh`
+  * update `GBYGB.pids` with correct pid for GBYGB_6
+  * run combiner job
+##### Rerun `GBYGB_6`
+```
+cd grabowsp@cori11:/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/GBYGB
+sbatch GBYGB_6.sh
+```
+##### Update `GBYGB_6` pid
+* update GBYGB.pids with new `GBYGB_6` pid (slurm output number)
+* new pid is 21050998
+##### Run combiner job
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/GBYGB
+sbatch GBYGBCombine.sh
+```
+#### GBYHA
+* looks like it may have run out of time
+* will re-run the prep
+  * need to delete the GBYHA.pids file
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/GBYHA
+rm GBYHA.pids
+module load python
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1 GBYHA -q 100
+```
+#### GBYNN
+* looks like it may have run out of time
+* will re-run the prep
+  * need to delete the GBYNN.pids file
+```
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/GBYNN
+rm GBYNN.pids
+module load python
+source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
+python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1 GBYNN -q 100
+```
 
 
