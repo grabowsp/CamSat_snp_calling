@@ -92,6 +92,41 @@ do jamo report short_form library $i | grep UNPROCESSED >> ./CONFIG/lib.config;
 done
 ```
 
+## Check that libraries pass QC
+### Overview
+* use jamo to see if any `LIB_CODE`s are linked to fastq files that failed \
+the JGI QC test
+* compare the Failed QC test files to those in lib.config
+### Looked for Failed runs
+* need to load the jamo module
+```
+module load jamo
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+for i in `cat camsat_mapping_libs_for_SNPcalling_1.txt`; 
+do jamo report short_form library $i | grep 'passedQC=F' >> qc_F_report.txt; 
+echo $i; done
+```
+### Check if failed runs are included in lib.config
+```
+qc_report_file <- '/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/qc_F_report.txt'
+qc_report <- read.table(qc_report_file, header = F, sep = ' ', 
+  stringsAsFactors = F)
+#
+lib_config_file <- '/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/CONFIG/lib.config'
+lib_config <- read.table(lib_config_file, header = F, sep = '\t', 
+  stringsAsFactors = F)
+#
+f_info <- strsplit(qc_report[,5], split = '/')
+f_files <- unlist(lapply(f_info, function(x) x[[length(x)]]))
+#
+f_in_lc_list <- sapply(f_files, function(x) grep(x, lib_config[,6], fixed = T))
+f_in_lc_length <- unlist(lapply(f_in_lc_list, length))
+f_in_lc <- which(f_in_lc_length > 0)
+length(f_in_lc) > 0
+# [1] FALSE
+```
+* no overlap between QC failure and files in lib.config
+
 ## Submit prepping jobs
 ### Overview
 * Generated sub-lists of 45 `LIB_CODE`s because launching the prepper submits \
@@ -120,6 +155,15 @@ sleep 10s;
 done
 ```
 
+## Check if libraries have more than one fastq file
+```
+lib_config_file <-'/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/CONFIG/lib.config'
+lib_config <- read.table(lib_config_file, header = F, sep = '\t', 
+  stringsAsFactors = F)
+
+sum(duplicated(lib_config[,1]))
+# 0
+```
 
 ## Checking that preps have finished
 ### Overview
