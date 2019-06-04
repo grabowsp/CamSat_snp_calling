@@ -172,11 +172,13 @@ sum(duplicated(lib_config[,1]))
 ### Check for `prepComplete` file
 ```
 cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
-for i in `cat lib_small_list_01`; do ls -oh ./$i/prepComplete; done
+for i in `cat camsat_mapping_libs_for_SNPcalling_1.txt`; 
+do ls -oh ./$i/prepComplete; done
 ```
 * all finished for `lib_small_list_00`
 * 3 did not finish in `lib_small_list_01`
   * GBYGB, GBYHA, GBYNN didn't finish..
+* When running for full list, all have finished
 
 ### Troubleshooting
 #### GBYGB
@@ -219,6 +221,60 @@ rm GBYNN.pids
 module load python
 source activate /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/ANACONDA_ENVS/PREP_ENV/
 python3 /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/PREP_TESTING/splittingOPP.py /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1 GBYNN -q 100
+```
+
+## Archive Prepped Libraries
+### Overview
+* Use Chris's script
+* Need to generate a CONFIG file for the archiver
+  * use the lib.config file to get important info
+### Generate CONFIG file
+* in R
+```
+prep_config_file <- '/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/CONFIG/lib.config'
+prep_config <- read.table(prep_config_file, header = F, sep = '\t',
+  stringsAsFactors = F)
+
+prep_data_dir <- '/global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1/'
+destination_dir <- 'SNPS/Camelina_sativa'
+
+archive_list <- list()
+for(pc in seq(nrow(prep_config))){
+  tmp_list <- list()
+  tmp_lib_name <- prep_config[pc, 1]
+  tmp_list[['FILE']] <-paste(tmp_lib_name, '.prepped.fastq.bz2', sep = '')
+  tmp_list[['LOCATION']] <- paste(prep_data_dir, tmp_lib_name, '/',
+    sep = '')
+  tmp_list[['DESTINATION']] <- destination_dir
+  tmp_list[['META_DATA']] <- paste(prep_data_dir, tmp_lib_name, '/',
+    tmp_lib_name, '.extractionStats', sep = '')
+  tmp_orig_full <- unlist(strsplit(prep_config[pc, 6], split = '/'))
+  tmp_list[['ORIGFILE']] <- tmp_orig_full[length(tmp_orig_full)]
+  tmp_list[['FILETYPE']] <- 'fastq,fastq.gz'
+  tmp_list[['STATE']] <- 'UNPROCESSED'
+  #
+  archive_list[[tmp_lib_name]] <- tmp_list
+}
+
+archive_df <- data.frame(
+  matrix(unlist(archive_list), byrow = T, ncol = length(archive_list[[1]])),
+  stringsAsFactors = F)
+
+colnames(archive_df) <- names(archive_list[[1]])
+
+archive_config_out <- paste(prep_data_dir, 'mapping_archive_config.txt',
+  sep = '')
+
+write.table(archive_df, file = archive_config_out, quote = F, sep = '\t',
+  row.names = F, col.names = T)
+```
+### Run Archiving Script
+```
+bash
+module load python
+module load jamo
+cd /global/projectb/scratch/grabowsp/Csativa_reseq/camsat_map_call_1
+python /global/dna/projectdirs/plant/geneAtlas/HAGSC_TOOLS/generalizedArchiver.py mapping_archive_config.txt
 ```
 
 
