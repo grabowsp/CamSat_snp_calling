@@ -110,10 +110,11 @@ split -l 20 -d single_fastq_libCodes.txt sing_lc_sub_
 ```
 ### Start SNPcaller
 * ran: `sing_lc_sub_00`; `sing_lc_sub_01`; `sing_lc_sub_02`; `sing_lc_sub_03`;\
-`sing_lc_sub_04`
+`sing_lc_sub_04`; `sing_lc_sub_05`; `sing_lc_sub_06`; `sing_lc_sub_07`; \
+`sing_lc_sub_08`
 ```
 cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/
-for LIB in `cat sing_lc_sub_04`;
+for LIB in `cat sing_lc_sub_08`;
 do cd ./$LIB
 snpCaller_GP.py
 sleep 1s
@@ -125,11 +126,14 @@ done
 ### Overview
 * check that final .bam files were generated
 ### Check that final bam and VCF was generated
-* `sing_lc_sub_00`; `sing_lc_sub_01`; `sing_lc_sub_02`; `sing_lc_sub_03`
+* `sing_lc_sub_00`; `sing_lc_sub_01`; `sing_lc_sub_02`; `sing_lc_sub_03`; \
+`sing_lc_sub_04`; `sing_lc_sub_05`; `sing_lc_sub_06`
+* should check 07, 08, ... at same time and re-start problematic ones for \
+those libraries at the same time
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling
-for i in `cat sing_lc_sub_03`;
+for i in `cat sing_lc_sub_06`;
 do echo $i 
 ls -oh ./$i'/'$i'.gatk.bam';
 ls -oh ./$i'/'$i'.GATK.SNP.postFilter.vcf';
@@ -231,16 +235,73 @@ for LC in GBPSY GBPXY GBPUC GGNWU GBPZX GBPWC;
   snpCaller_GP.py -s merge_bam_files;
   done
 ```
-
-
+### Issues with `sing_lc_sub_04` libraries
+* Several libraries did not finish:
+  * GBPXN; GCNHT; GCNHX; GCNHN; GCNHU
+#### Try restarting the sorting part
+```
+bash
+for LC in GBPXN GCNHT GCNHX GCNHN GCNHU;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  for x in $(ls -l *.sorting.sh.stderr | awk '{if($5>122)print $9}' | rev \
+| cut -f2- -d"." | rev);
+    do echo $x; sbatch $x; sleep 1s;
+    done;
+  done
+```
+* Next step:
+```
+for LC in GBPXN GCNHT GCNHX GCNHN GCNHU;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  snpCaller_GP.py -s merge_bam_files;
+  done
+```
+### Issues with `sing_lc_sub_05` libraries
+* GCNHZ; GCNHO; GCNON; GCNCB; GBSXN
+```
+bash
+for LC in GCNHZ GCNHO GCNON GCNCB GBSXN;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  for x in $(ls -l *.sorting.sh.stderr | awk '{if($5>122)print $9}' | rev \
+| cut -f2- -d"." | rev);
+    do echo $x; sbatch $x; sleep 1s;
+    done;
+  done
+```
+* next step:
+```
+for LC in GCNHZ GCNHO GCNON GCNCB GBSXN;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  snpCaller_GP.py -s merge_bam_files;
+  done
+```
+### Issues with `sing_lc_sub_06` libraries
+* GBSYA; GGNWA
+```
+bash
+for LC in GBSYA GGNWA;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  for x in $(ls -l *.sorting.sh.stderr | awk '{if($5>122)print $9}' | rev \
+| cut -f2- -d"." | rev);
+    do echo $x; sbatch $x; sleep 1s;
+    done;
+  done
+```
+* next step:
+```
+for LC in GBSYA GGNWA;
+  do cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/$LC;
+  snpCaller_GP.py -s merge_bam_files;
+  done
+```
 
 ## Clean up libraries after finishing with SNP calling
 * done for `sing_lc_sub_00`, `sing_lc_sub_01`, `sing_lc_sub_02`, \
-`sing_lc_sub_02`
+`sing_lc_sub_03`; `sing_lc_sub_04`; `sing_lc_sub_05`; `sing_lc_sub_06`
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/
-for LIB in `cat sing_lc_sub_03`;
+for LIB in `cat sing_lc_sub_06`;
 do cd ./$LIB
 rm -f *.sh.* *fastq.gz *.sorting.sh *.merging.sh
 rm -f *.RG.ba* *.deDup.ba* *.reAligned.ba*
