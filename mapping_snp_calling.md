@@ -53,10 +53,11 @@ split -l 20 -d camsat_mapping_libs_for_SNPcalling_1.txt map_sub_
 
 ## Start SNPcaller
 * ran: `map_sub_00`, `map_sub_01`, `map_sub_02`, `map_sub_03`, `map_sub_04` \
-`map_sub_05`, `map_sub_06`, `map_sub_07`, `map_sub_08`, `map_sub_09`
+`map_sub_05`, `map_sub_06`, `map_sub_07`, `map_sub_08`, `map_sub_09`, \
+`map_sub_10`, `map_sub_11`
 ```
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for LIB in `cat map_sub_09`;
+for LIB in `cat map_sub_11`;
 do cd ./$LIB
 snpCaller_GP.py
 sleep 1s
@@ -66,11 +67,11 @@ done
 
 ## QC
 * check that final VCF was generated
-* checked: 00, 01, 02, 03, 04, 05, 06, 07
+* checked: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for i in `cat map_sub_08`;
+for i in `cat map_sub_10`;
 do ls -oh ./$i'/'$i'.GATK.SNP.postFilter.vcf';
 done
 ```
@@ -103,10 +104,14 @@ restart from that step
 * `map_sub_08`
   * GCBST, GCBSP, GCBSY, GCBTN
   * GCBTC
+* `map_sub_09`
+  * GCBUP, GCBTS
+* `map_sub_10`
+  * GCBWB, GCBWZ, GCBWA - still need to be restarted
 #### check if jobs are still running before restarting
 ```
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for LC in GCBTC GCBST GCBSP GCBSY GCBTN;
+for LC in GCBWB GCBWZ GCBWA;
   do
   sacct | grep $LC | grep RUN;
   sacct | grep $LC | grep PEND; 
@@ -115,7 +120,7 @@ for LC in GCBTC GCBST GCBSP GCBSY GCBTN;
 ### Code for re-starting stalled pipeline
 * change the library codes at beginning of loops
 ```
-for LC in GCBST GCBSP GCBSY GCBTN;
+for LC in GCBWB GCBWZ GCBWA;
   do cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/$LC;
   for x in $(ls -l *.sorting.sh.stderr | awk '{if($5>122)print $9}' | rev \
 | cut -f2- -d"." | rev);
@@ -125,7 +130,7 @@ for LC in GCBST GCBSP GCBSY GCBTN;
 ```
 * next step:
 ```
-for LC in GCBST GCBSP GCBSY GCBTN;
+for LC in GCBWB GCBWZ GCBWA;
   do cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/$LC;
   snpCaller_GP.py -s merge_bam_files;
   sleep 1s;
@@ -133,11 +138,11 @@ for LC in GCBST GCBSP GCBSY GCBTN;
 ```
 
 ## Clean up libraries after finishing with SNP calling
-* ran for: 00, 01, 02, 03, 04, 05, 06, 07
+* ran for: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for LIB in `cat map_sub_07`;
+for LIB in `cat map_sub_09`;
 do cd ./$LIB
 rm -f *.sh.* *fastq.gz *.sorting.sh *.merging.sh
 rm -f *.RG.ba* *.deDup.ba* *.reAligned.ba*
