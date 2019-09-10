@@ -574,5 +574,142 @@ ln -s /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/Camsat_diversity_fi
 
 ln -s /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/Camsat_diversity_filt_.het /home/www/restricted_access/camelina_diversity/Camsat_diversity_filt_.het
 
+```
+
+## Make a more Filtered VCF for Huang
+* Goal: 100k SNPs
+* Remove SNPs with >10% missing data
+  * --max-missing 0.8
+* Need 2 alleles
+  * --min-alleles 2 --max-alleles 2
+* Max heterozygosity 0.5
+* Filter by MAF - 0.05?
+* Filter by proximity
+### First round of filtering with vcfTools
+* Missing data
+  * --max_missing 0.9
+* 2 alleles
+  * --min-alleles 2 --max-alleles 2
+* MAF 0.05
+  * --maf 0.05
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+cp Camsat_div_filt1_vcf.sh Camsat_div_filt1_vcf_v2.sh
+```
+* manually adjust Camsat_div_filt1_vcf_v2.sh with vim
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+qsub Camsat_div_filt1_vcf_v2.sh
+```
+* Output is 1,904,039 SNPs
+
+### Generate File with counts of each genotype class
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+cp Camsat_div_1_hardy.sh Camsat_div_1_hardy_v2.sh
+qsub Camsat_div_1_hardy_v2.sh
+```
+* `Camsat_div_1_hardy_v2.sh` manually adjusted using vim
+
+### Generate List of SNPs to remove
+#### Extract the first three lines of the HWE output
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering/
+cut /home/grabowsky_scratch/Camsat_diversity/snp_filtering/Camsat_diversity_filt_v2.1.hwe -f 1-3 > geno_count_v2.txt
+```
+#### Make list in R
+```
+in_file <- paste('/home/grabowsky_scratch/Camsat_diversity/snp_filtering/', 
+  'geno_count_v2.txt', sep = '')
+count_df <- read.table(in_file, header = T, stringsAsFactors = F, sep = '\t')
+
+per_het_cut <- 0.5
+
+count_list <- strsplit(count_df[,3], split = '/')
+count_df$n_het <- unlist(lapply(count_list, function(x) as.numeric(x[2])))
+
+n_samp_vec <- unlist(lapply(count_list[1:100], function(x) sum(as.numeric(x))))
+tot_n_samp <- median(n_samp_vec)
+
+n_cutoff <- ceiling(tot_n_samp * per_het_cut)
+
+high_inds <- which(count_df$n_het > n_cutoff)
+
+remove_df <- count_df[high_inds, ]
+
+out_file <- paste('/home/grabowsky_scratch/Camsat_diversity/snp_filtering/', 
+  'bad_snps_highH_v2.txt', sep = '')
+write.table(remove_df[, c(1:2)], file = out_file, quote = F, sep = '\t',
+  row.names = F, col.names = F)
+
+```
+* remove 254,785 SNPs
+
+### Filter by excess of heterozygous genotypes
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+cp Camsat_div_2_vcf.sh Camsat_div_hwfilt_vcf_v2.sh
+qsub Camsat_div_hwfilt_vcf_v2.sh
+```
+* Leaves 1,649,254 SNPs
+
+### Prune/thin the SNPs by LD
+* Use plink
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+
+/home/t4c1/WORK/sujan/softwares/plink2/plink --vcf Camsat_diversity_filt_v2.2.recode.vcf --keep-allele-order --make-bed --allow-extra-chr --out Camsat_div_filt_v2.2
+
+/home/t4c1/WORK/sujan/softwares/plink2/plink --bfile Camsat_div_filt_v2.2 --allow-extra-chr --no-sex --no-parents --indep-pairwise 50 50 0.5 --out Camsat_div_filt_v2.2_ld0.5
+
+/home/t4c1/WORK/sujan/softwares/plink2/plink --bfile Camsat_div_filt_v2.2 --allow-extra-chr --extract Camsat_div_filt_v2.2_ld0.5.prune.in --recode vcf --out Camsat_div_filt_v2.3
+```
+* Leaves 338,222 SNPs
+
+#### Try using different SNP shifting
+```
+/home/t4c1/WORK/sujan/softwares/plink2/plink --bfile Camsat_div_filt_v2.2 --allow-extra-chr --no-sex --no-parents --indep-pairwise 50 10 0.4 --out Camsat_div_filt_v2.2_ld0.5_10
+
+/home/t4c1/WORK/sujan/softwares/plink2/plink --bfile Camsat_div_filt_v2.2 --allow-extra-chr --extract Camsat_div_filt_v2.2_ld0.5_10.prune.in --maf 0.1 --recode vcf --out Camsat_div_filt_v2.4
+```
+* Use this one - it Leaves 165,919 SNPs
+
+### Extract stats
+#### missingness
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+vcftools --vcf Camsat_div_filt_v2.4.vcf \
+--missing-indv --out Camsat_diversity_filt_v2.4_
+```
+#### heterozygosity
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+vcftools --vcf Camsat_div_filt_v2.4.vcf \
+--het --out Camsat_diversity_filt_v2.4
+```
+
+### Make zip of VCF
+```
+cd /home/grabowsky_scratch/Camsat_diversity/snp_filtering
+pigz -c Camsat_div_filt_v2.4.vcf \
+> Camsat_diversity_filtered_SNPs_v2.4.vcf.gz
+```
+
+### Copy files to work directory
+```
+rsync /home/grabowsky_scratch/Camsat_diversity/snp_filtering/Camsat_diversity_filtered_SNPs_v2.4.vcf.gz /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/
+
+cp /home/grabowsky_scratch/Camsat_diversity/snp_filtering/Camsat_diversity_filt_v2.4_.imiss /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/
+
+cp /home/grabowsky_scratch/Camsat_diversity/snp_filtering/Camsat_diversity_filt_v2.4.het /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/
+```
+
+### Make links in shared directory
+```
+ln -s /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/Camsat_diversity_filtered_SNPs_v2.4.vcf.gz /home/www/restricted_access/camelina_diversity/Camsat_diversity_filtered_SNPs_v2.4.vcf.gz
+
+ln -s /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/Camsat_diversity_filt_v2.4_.imiss /home/www/restricted_access/camelina_diversity/Camsat_diversity_filt_v2.4_.imiss
+
+ln -s /home/t4c1/WORK/grabowsk/data/Camelina_reseq/diversity/Camsat_diversity_filt_v2.4.het /home/www/restricted_access/camelina_diversity/Camsat_diversity_filt_v2.4.het
 
 ```
