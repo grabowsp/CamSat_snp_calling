@@ -57,7 +57,7 @@ split -l 20 -d camsat_mapping_libs_for_SNPcalling_1.txt map_sub_
 `map_sub_10`, `map_sub_11`
 ```
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for LIB in `cat map_sub_11`;
+for LIB in `cat map_sub_13`;
 do cd ./$LIB
 snpCaller_GP.py
 sleep 1s
@@ -67,11 +67,11 @@ done
 
 ## QC
 * check that final VCF was generated
-* checked: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09
+* checked: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for i in `cat map_sub_10`;
+for i in `cat map_sub_13`;
 do ls -oh ./$i'/'$i'.GATK.SNP.postFilter.vcf';
 done
 ```
@@ -107,7 +107,11 @@ restart from that step
 * `map_sub_09`
   * GCBUP, GCBTS
 * `map_sub_10`
-  * GCBWB, GCBWZ, GCBWA - still need to be restarted
+  * GCBWB, GCBWZ, GCBWA
+* `map_sub_11`
+  * GCBXX, GCBYB
+* `map_sub_12`
+  * GCBZU, GCBZX, GCCAO
 #### check if jobs are still running before restarting
 ```
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
@@ -120,7 +124,7 @@ for LC in GCBWB GCBWZ GCBWA;
 ### Code for re-starting stalled pipeline
 * change the library codes at beginning of loops
 ```
-for LC in GCBWB GCBWZ GCBWA;
+for LC in GCBZU GCBZX GCCAO;
   do cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/$LC;
   for x in $(ls -l *.sorting.sh.stderr | awk '{if($5>122)print $9}' | rev \
 | cut -f2- -d"." | rev);
@@ -130,7 +134,7 @@ for LC in GCBWB GCBWZ GCBWA;
 ```
 * next step:
 ```
-for LC in GCBWB GCBWZ GCBWA;
+for LC in GCBZU GCBZX GCCAO;
   do cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/$LC;
   snpCaller_GP.py -s merge_bam_files;
   sleep 1s;
@@ -138,11 +142,11 @@ for LC in GCBWB GCBWZ GCBWA;
 ```
 
 ## Clean up libraries after finishing with SNP calling
-* ran for: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09
+* ran for: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13
 ```
 bash
 cd /global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/
-for LIB in `cat map_sub_09`;
+for LIB in `cat map_sub_13`;
 do cd ./$LIB
 rm -f *.sh.* *fastq.gz *.sorting.sh *.merging.sh
 rm -f *.RG.ba* *.deDup.ba* *.reAligned.ba*
@@ -152,4 +156,63 @@ cd ..;
 done
 ```
 
+## Generate list of .bam files for SNP calling
+```
+ril_dir <- '/global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/'
+parent_dir <- '/global/projectb/scratch/grabowsp/Cs_reseq_snp_calling/'
+
+ril_libs_file_short <- 'camsat_mapping_libs_for_SNPcalling_1.txt'
+ril_libs_file <- paste(ril_dir, ril_libs_file_short, sep = '')
+
+ril_libs <- read.table(ril_libs_file, header = F, stringsAsFactors = F)
+
+ril_full_path <- paste(ril_dir, ril_libs[,1], '/', ril_libs[,1], '.gatk.bam', 
+  sep = '')
+
+parent_libs <- c('CAWTG', 'CAWTH')
+
+parent_full_path <- paste(parent_dir, parent_libs, '/', parent_libs, 
+   '.gatk.bam', sep = '')
+
+ril_all_full_path <- c(parent_full_path, ril_full_path)
+
+ril_bam_list_out <- '/global/projectb/scratch/grabowsp/Cs_RIL_snp_calling/Cs_RIL_varscan/ril_bam_list.txt'
+
+write.table(ril_all_full_path, ril_bam_list_out, quote = F, sep = '\t', 
+  row.names = F, col.names = F)
+```
+
+## Make list of Sample Names and Library Names
+* location of file I made by copying info from Chaofu's email about \
+sequencing being done:
+  * `/home/t4c1/WORK/grabowsk/data/Camelina_reseq/Cam_RIL_info.txt`
+### Generate list of library and sample names
+```
+info_file <- '/home/t4c1/WORK/grabowsk/data/Camelina_reseq/Cam_RIL_info.txt'
+ril <- read.table(info_file, sep = '\t', header = F, stringsAsFactors = F)
+ril_sep <- strsplit(ril[,1], split = ' ')
+
+mystery_character <- unlist(strsplit(ril_sep[[1]][1], split = ''))[7]
+lib_vec <- unlist(lapply(ril_sep, function(x) x[3]))
+lib_vec <- gsub(mystery_character, '', lib_vec)
+
+name_vec <- unlist(lapply(ril_sep, function(x) x[4]))
+name_vec <- gsub('Camelina', '', name_vec)
+name_vec <- gsub('sativa', '', name_vec)
+name_vec <- gsub(mystery_character, '', name_vec)
+
+name_vec[10] <- paste(name_vec[10], ril_sep[[10]][5])
+name_vec[11] <- paste(name_vec[11], ril_sep[[11]][5])
+
+lib_vec <- c(lib_vec, 'CAWTG', 'CAWTH')
+name_vec <- c(name_vec, 'P1 MT5', 'P2 MT102')
+
+tot_df <- data.frame(sample_id = name_vec, sequencing_library = lib_vec,
+  stringsAsFactors = F)
+
+out_file <- '/home/t4c1/WORK/grabowsk/data/Camelina_reseq/Cam_RIL_Lib_to_ID.txt'
+write.table(tot_df, file = out_file, quote = F, sep = '\t', row.names = F,
+  col.names = T)
+
+```
 
